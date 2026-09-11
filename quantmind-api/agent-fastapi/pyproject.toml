@@ -1,0 +1,52 @@
+# =====================================================================
+# File: pyproject.toml
+# Description: Python package + tooling config for the QuantMind FastAPI
+#              agent/deterministic-engine service. Pins runtime and dev
+#              dependencies and configures pytest, ruff, and mypy.
+# =====================================================================
+[project]
+name = "quantmind-agent"
+version = "1.0.0"
+description = "QuantMind AI agent + deterministic engine service (FR1-FR5)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.1",
+    "sqlalchemy==2.0.36",
+    "psycopg[binary]==3.2.3",
+    "redis==5.2.1",
+    "pymongo==4.10.1",
+    "numpy==2.2.1",
+    "pandas==2.2.3",
+    "httpx==0.28.1",
+    "python-json-logger==3.2.1",
+    "google-genai==0.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.0",
+    "pytest-cov==6.0.0",
+    "ruff==0.8.6",
+    "mypy==1.14.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=app --cov-report=term-missing"
+asyncio_mode = "auto"
+markers = [
+    "pentest: black-box security tests that require a live BFF target",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
