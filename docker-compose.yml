@@ -1,0 +1,93 @@
+# =====================================================================
+# File: docker-compose.yml
+# Description: Local Docker orchestration for the full QuantMind platform:
+#              UI (Vite) -> BFF (NestJS) -> Agent (FastAPI) -> Postgres +
+#              Redis + MongoDB. Enforces the P1/internal boundary: only the
+#              UI and BFF publish host ports; the agent + datastores stay on
+#              the internal network (agent published to localhost only for
+#              Swagger inspection during dev).
+# Source: specs/arch/diagrams/02-container-diagram.mmd, HLD §4
+# =====================================================================
+name: quantmind
+
+services:
+  postgres:
+    build:
+      context: ./quantmind-db
+      dockerfile: Dockerfile.postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-quantmind}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quantmind}
+      POSTGRES_DB: ${POSTGRES_DB:-quantmind}
+    ports:
+      - "127.0.0.1:5432:5432"   # localhost only
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [quantmind-net]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./quantmind-db/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks: [quantmind-net]
+
+  mongo:
+    build:
+      context: ./quantmind-db
+      dockerfile: Dockerfile.mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-root}
+    volumes:
+      - mongodata:/data/db
+    networks: [quantmind-net]
+
+  agent:
+    build:
+      context: ./quantmind-api/agent-fastapi
+    environment:
+      QM_POSTGRES_DSN: postgresql+psycopg://${POSTGRES_USER:-quantmind}:${POSTGRES_PASSWORD:-quantmind}@postgres:5432/${POSTGRES_DB:-quantmind}
+      QM_REDIS_URL: redis://redis:6379/0
+      QM_MONGO_URL: mongodb://${MONGO_USER:-root}:${MONGO_PASSWORD:-root}@mongo:27017
+      QM_LLM_PROVIDER: ${QM_LLM_PROVIDER:-gemini}
+      QM_LLM_MODEL: ${QM_LLM_MODEL:-gemini-3.6-flash}
+      QM_LLM_API_KEY: ${QM_LLM_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      QM_INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+    ports:
+      - "127.0.0.1:8000:8000"   # localhost only — internal service, exposed for Swagger in dev
+    depends_on: [postgres, redis, mongo]
+    networks: [quantmind-net]
+
+  bff:
+    build:
+      context: ./quantmind-api/bff-nestjs
+    environment:
+      BFF_PORT: 8080
+      AGENT_BASE_URL: http://agent:8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      RATE_LIMIT: ${RATE_LIMIT:-60}
+    ports:
+      - "8080:8080"             # client-facing
+    depends_on: [agent]
+    networks: [quantmind-net]
+
+  ui:
+    build:
+      context: ./quantmind-ui
+    environment:
+      VITE_BFF_BASE_URL: ${VITE_BFF_BASE_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    depends_on: [bff]
+    networks: [quantmind-net]
+
+volumes:
+  pgdata:
+  mongodata:
+
+networks:
+  quantmind-net:
+    driver: bridge

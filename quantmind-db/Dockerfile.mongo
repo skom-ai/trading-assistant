@@ -1,0 +1,17 @@
+# =====================================================================
+# File: Dockerfile.mongo
+# Description: QuantMind MongoDB image for the audit-only LLM trace
+#              store. Bundles the collection/index/TTL init script the
+#              mongo image runs on first boot.
+# Source: quantmind-db/README.md, specs/arch/data/mongodb-collections.md
+# =====================================================================
+FROM mongo:7
+
+# First-boot init — mongo image runs *.js in this dir once against a
+# fresh data volume (after the mongod starts, using root creds).
+COPY mongo/init/01_collections.js /docker-entrypoint-initdb.d/01_collections.js
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=10 \
+    CMD mongosh --quiet --eval "db.adminCommand('ping').ok" || exit 1
+
+EXPOSE 27017

@@ -1,0 +1,23 @@
+# =====================================================================
+# File: Dockerfile.postgres
+# Description: QuantMind PostgreSQL image. Bundles the versioned
+#              migrations + seeds and a first-boot runner that applies
+#              them in order. Based on the official postgres 16 image.
+# Source: quantmind-db/README.md
+# =====================================================================
+FROM postgres:16-alpine
+
+# SQL assets consumed by the init runner (copied to a stable path).
+COPY postgres/migrations /quantmind-sql/migrations
+COPY postgres/seeds      /quantmind-sql/seeds
+
+# First-boot runner — postgres image executes *.sh in this dir once,
+# on an empty data volume, as the superuser after the server starts.
+COPY postgres/docker-entrypoint-initdb.d/00_run_all.sh /docker-entrypoint-initdb.d/00_run_all.sh
+RUN chmod +x /docker-entrypoint-initdb.d/00_run_all.sh
+
+# Healthcheck: server accepts connections for the app database.
+HEALTHCHECK --interval=10s --timeout=5s --retries=10 \
+    CMD pg_isready -U "${POSTGRES_USER:-quantmind}" -d "${POSTGRES_DB:-quantmind}" || exit 1
+
+EXPOSE 5432
