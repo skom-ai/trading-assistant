@@ -1,0 +1,116 @@
+# ─────────────────────────────────────────────
+# Environment & Secrets
+# ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# ─────────────────────────────────────────────
+# Python / FastAPI (quantmind-api/agent-fastapi)
+# ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.manifest
+*.spec
+MANIFEST
+
+# ─────────────────────────────────────────────
+# Node / NestJS BFF & Vite UI (bff-nestjs, quantmind-ui)
+# ─────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─────────────────────────────────────────────
+# Testing & Coverage
+# ─────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+coverage.xml
+nosetests.xml
+*.cover
+.cache/
+# Playwright (quantmind-ui)
+playwright-report/
+test-results/
+/blob-report/
+.playwright/
+
+# ─────────────────────────────────────────────
+# Databases (quantmind-db) & local data volumes
+# ─────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+data/
+pgdata/
+mongodata/
+redisdata/
+dump.rdb
+
+# ─────────────────────────────────────────────
+# Logs
+# ─────────────────────────────────────────────
+*.log
+logs/
+
+# ─────────────────────────────────────────────
+# IDEs & Editors
+# ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.spyderproject/
+.ropeproject/
+.ipynb_checkpoints/
+
+# ─────────────────────────────────────────────
+# OS
+# ─────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+local-files/
+docs/
+scripts/
+
+# ─────────────────────────────────────────────
+# Local-only working files (not for the repo)
+# ─────────────────────────────────────────────
+quantmind-api/bff-nestjs/node_modules/
+quantmind-api/agent-fastapi/.pytest_cache/
