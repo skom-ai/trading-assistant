@@ -1,6 +1,0 @@
-{
-  "name": "QuantMind",
-  "description": "Institutional-grade financial intelligence terminal featuring deterministic stock scanning, news catalyst opportunity verification, strategy studio planning, and SEC-17a-4 cryptographic audit trails.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

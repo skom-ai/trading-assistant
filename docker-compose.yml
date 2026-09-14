@@ -1,6 +1,6 @@
 # =====================================================================
 # File: docker-compose.yml
-# Description: Local Docker orchestration for the full QuantMind platform:
+# Description: Local Docker orchestration for the full Valtide platform:
 #              UI (Vite) -> BFF (NestJS) -> Agent (FastAPI) -> Postgres +
 #              Redis + MongoDB. Enforces the P1/internal boundary: only the
 #              UI and BFF publish host ports; the agent + datastores stay on
@@ -8,61 +8,61 @@
 #              Swagger inspection during dev).
 # Source: specs/arch/diagrams/02-container-diagram.mmd, HLD §4
 # =====================================================================
-name: quantmind
+name: valtide
 
 services:
   postgres:
     build:
-      context: ./quantmind-db
+      context: ./valtide-db
       dockerfile: Dockerfile.postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-quantmind}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quantmind}
-      POSTGRES_DB: ${POSTGRES_DB:-quantmind}
+      POSTGRES_USER: ${POSTGRES_USER:-valtide}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-valtide}
+      POSTGRES_DB: ${POSTGRES_DB:-valtide}
     ports:
       - "127.0.0.1:5432:5432"   # localhost only
     volumes:
       - pgdata:/var/lib/postgresql/data
-    networks: [quantmind-net]
+    networks: [valtide-net]
 
   redis:
     image: redis:7-alpine
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
-      - ./quantmind-db/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    networks: [quantmind-net]
+      - ./valtide-db/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks: [valtide-net]
 
   mongo:
     build:
-      context: ./quantmind-db
+      context: ./valtide-db
       dockerfile: Dockerfile.mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-root}
     volumes:
       - mongodata:/data/db
-    networks: [quantmind-net]
+    networks: [valtide-net]
 
   agent:
     build:
-      context: ./quantmind-api/agent-fastapi
+      context: ./valtide-api/agent-fastapi
     environment:
-      QM_POSTGRES_DSN: postgresql+psycopg://${POSTGRES_USER:-quantmind}:${POSTGRES_PASSWORD:-quantmind}@postgres:5432/${POSTGRES_DB:-quantmind}
-      QM_REDIS_URL: redis://redis:6379/0
-      QM_MONGO_URL: mongodb://${MONGO_USER:-root}:${MONGO_PASSWORD:-root}@mongo:27017
-      QM_LLM_PROVIDER: ${QM_LLM_PROVIDER:-gemini}
-      QM_LLM_MODEL: ${QM_LLM_MODEL:-gemini-3.6-flash}
-      QM_LLM_API_KEY: ${QM_LLM_API_KEY:-}
+      VT_POSTGRES_DSN: postgresql+psycopg://${POSTGRES_USER:-valtide}:${POSTGRES_PASSWORD:-valtide}@postgres:5432/${POSTGRES_DB:-valtide}
+      VT_REDIS_URL: redis://redis:6379/0
+      VT_MONGO_URL: mongodb://${MONGO_USER:-root}:${MONGO_PASSWORD:-root}@mongo:27017
+      VT_LLM_PROVIDER: ${VT_LLM_PROVIDER:-gemini}
+      VT_LLM_MODEL: ${VT_LLM_MODEL:-gemini-3.6-flash}
+      VT_LLM_API_KEY: ${VT_LLM_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      QM_INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+      VT_INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
     ports:
       - "127.0.0.1:8000:8000"   # localhost only — internal service, exposed for Swagger in dev
     depends_on: [postgres, redis, mongo]
-    networks: [quantmind-net]
+    networks: [valtide-net]
 
   bff:
     build:
-      context: ./quantmind-api/bff-nestjs
+      context: ./valtide-api/bff-nestjs
     environment:
       BFF_PORT: 8080
       AGENT_BASE_URL: http://agent:8000
@@ -72,22 +72,22 @@ services:
     ports:
       - "8080:8080"             # client-facing
     depends_on: [agent]
-    networks: [quantmind-net]
+    networks: [valtide-net]
 
   ui:
     build:
-      context: ./quantmind-ui
+      context: ./valtide-ui
     environment:
       VITE_BFF_BASE_URL: ${VITE_BFF_BASE_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
     depends_on: [bff]
-    networks: [quantmind-net]
+    networks: [valtide-net]
 
 volumes:
   pgdata:
   mongodata:
 
 networks:
-  quantmind-net:
+  valtide-net:
     driver: bridge

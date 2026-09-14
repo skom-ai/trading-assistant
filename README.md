@@ -8,11 +8,11 @@ trades.
 
 ## Status
 
-**API + Database layers built and dockerized (2026-09-07).** The `quantmind-api` (NestJS BFF +
-FastAPI agent/deterministic engine) and `quantmind-db` (PostgreSQL + Redis + MongoDB) tiers are
+**API + Database layers built and dockerized (2026-09-07).** The `valtide-api` (NestJS BFF +
+FastAPI agent/deterministic engine) and `valtide-db` (PostgreSQL + Redis + MongoDB) tiers are
 implemented against the specs, containerized, and verified end-to-end on a local Docker instance
 (all six services healthy; FR1-FR4 exercised through the BFF; Swagger/OpenAPI served). The existing
-`quantmind-ui` React app matches the served response contracts. See
+`valtide-ui` React app matches the served response contracts. See
 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) for the full build record and follow-ups.
 
 ## Quick start
@@ -22,10 +22,10 @@ cp .env.example .env
 docker-compose up -d --build      # UI :3000 · BFF :8080 (/api/docs) · agent :8000 (/docs)
 ```
 
-Layer READMEs: [`quantmind-api/README.md`](quantmind-api/README.md),
-[`quantmind-db/README.md`](quantmind-db/README.md),
-[`quantmind-api/agent-fastapi/README.md`](quantmind-api/agent-fastapi/README.md),
-[`quantmind-api/bff-nestjs/README.md`](quantmind-api/bff-nestjs/README.md).
+Layer READMEs: [`valtide-api/README.md`](valtide-api/README.md),
+[`valtide-db/README.md`](valtide-db/README.md),
+[`valtide-api/agent-fastapi/README.md`](valtide-api/agent-fastapi/README.md),
+[`valtide-api/bff-nestjs/README.md`](valtide-api/bff-nestjs/README.md).
 
 ## Documents
 
@@ -45,13 +45,13 @@ Layer READMEs: [`quantmind-api/README.md`](quantmind-api/README.md),
 Three tiers; the API tier is a logical **BFF → Process → System/Data** split over two services,
 per the specs (`specs/arch/HLD.md`, `SDD.md`, `DDD.md`).
 
-- **UI** (`quantmind-ui`) — React/Vite. Talks only to the NestJS BFF (Principle P1).
-- **BFF** (`quantmind-api/bff-nestjs`) — NestJS; the sole public, AI-mediating API. Correlation-id
+- **UI** (`valtide-ui`) — React/Vite. Talks only to the NestJS BFF (Principle P1).
+- **BFF** (`valtide-api/bff-nestjs`) — NestJS; the sole public, AI-mediating API. Correlation-id
   origin, strict DTO validation, rate limiting, sanitized error taxonomy, Swagger at `/api/docs`.
-- **Agent/Engine** (`quantmind-api/agent-fastapi`) — FastAPI; internal only. LangGraph-style
+- **Agent/Engine** (`valtide-api/agent-fastapi`) — FastAPI; internal only. LangGraph-style
   reasoning nodes (FR1/FR3) plus a strictly isolated zero-LLM deterministic engine (FR2/FR4), all
   FR5 guardrails, provider adapters, a **mock LLM by default** (swap to live via config).
-- **Data** (`quantmind-db`) — PostgreSQL (system of record, 10 entities, no PII), Redis
+- **Data** (`valtide-db`) — PostgreSQL (system of record, 10 entities, no PII), Redis
   (session/cache/rate-limit), MongoDB (audit-only LLM traces).
 
 Every output cites its evidence and returns `Insufficient Evidence` rather than guess. Deterministic
@@ -61,8 +61,8 @@ paths never call the LLM (CI-asserted). LLM access is via a swappable adapter (m
 
 ```bash
 # Agent service (Python 3.12)
-cd quantmind-api/agent-fastapi && pip install -e ".[dev]" && pytest      # 25 tests, ~93% coverage
+cd valtide-api/agent-fastapi && pip install -e ".[dev]" && pytest      # 25 tests, ~93% coverage
 # BFF (Node)
-cd quantmind-api/bff-nestjs && npm install && npm test                   # controller mediation tests
+cd valtide-api/bff-nestjs && npm install && npm test                   # controller mediation tests
 ```
 

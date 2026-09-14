@@ -9,7 +9,7 @@
 secrets.json
 
 # ─────────────────────────────────────────────
-# Python / FastAPI (quantmind-api/agent-fastapi)
+# Python / FastAPI (valtide-api/agent-fastapi)
 # ─────────────────────────────────────────────
 __pycache__/
 *.py[cod]
@@ -28,7 +28,7 @@ pip-wheel-metadata/
 MANIFEST
 
 # ─────────────────────────────────────────────
-# Node / NestJS BFF & Vite UI (bff-nestjs, quantmind-ui)
+# Node / NestJS BFF & Vite UI (bff-nestjs, valtide-ui)
 # ─────────────────────────────────────────────
 node_modules/
 dist/
@@ -52,14 +52,14 @@ coverage.xml
 nosetests.xml
 *.cover
 .cache/
-# Playwright (quantmind-ui)
+# Playwright (valtide-ui)
 playwright-report/
 test-results/
 /blob-report/
 .playwright/
 
 # ─────────────────────────────────────────────
-# Databases (quantmind-db) & local data volumes
+# Databases (valtide-db) & local data volumes
 # ─────────────────────────────────────────────
 *.sqlite
 *.sqlite3
@@ -112,5 +112,5 @@ scripts/
 # ─────────────────────────────────────────────
 # Local-only working files (not for the repo)
 # ─────────────────────────────────────────────
-quantmind-api/bff-nestjs/node_modules/
-quantmind-api/agent-fastapi/.pytest_cache/
+valtide-api/bff-nestjs/node_modules/
+valtide-api/agent-fastapi/.pytest_cache/
