@@ -1,0 +1,54 @@
+%% Valtide — Logical flow across the three feature paths (FR1 / FR2 / FR3+FR4)
+%% Shows how a request is routed and the guardrails each path enforces.
+%% Source: agent-fastapi/app/api/routes.py, app/services/{news,scanner,strategy}_service.py,
+%%         app/guardrails/{validators,release_gate}.py, app/engine/*
+flowchart TD
+    start([UI request via BFF]) --> route{"/internal/v1 route?"}
+
+    route -->|/news-check| n0
+    route -->|/scan| s0
+    route -->|/strategy| t0
+
+    %% ---- FR1: news-driven verdict (LLM) ----
+    subgraph fr1["FR1 — News verdict (LLM)"]
+        n0[fetch headlines] --> n1{evidence sufficient?}
+        n1 -->|no| ninsuf["INSUFFICIENT_EVIDENCE<br/>(no LLM call)"]
+        n1 -->|yes| n2[build indexed evidence] --> n3[LLM classify<br/>bounded structured parse]
+        n3 --> n4[release gate:<br/>traceability + language linter]
+        n4 --> n5[attach disclaimer]
+    end
+
+    %% ---- FR2: deterministic scan (zero-LLM) ----
+    subgraph fr2["FR2 — Scan (deterministic, zero-LLM)"]
+        s0[per-symbol market fetch] --> s1[factor_engine.compute_factors]
+        s1 --> s2[composite_scorer.score_and_rank]
+        s2 --> s3[top-10 ranked rows]
+    end
+
+    %% ---- FR3 + FR4: strategy + analogs ----
+    subgraph fr3["FR3 + FR4 — Strategy + Analogs"]
+        t0[single-name scan -> evidence] --> t1[framing neutralization]
+        t1 --> t2{evidence sufficient?}
+        t2 -->|no| tinsuf["INSUFFICIENT_EVIDENCE<br/>(no numeric plan)"]
+        t2 -->|yes| t3[LLM strategy generate]
+        t3 --> t4{numerically coherent?}
+        t4 -->|no, regen once| t3
+        t4 -->|still no| tfail["AGENT_OUTPUT_INVALID (502)"]
+        t4 -->|yes| t5[release gate:<br/>linter + traceability]
+        t5 --> t6[analog_matcher.match_analogs<br/>partial-failure isolated]
+        t6 --> t7[combined strategy + analogs]
+    end
+
+    n5 --> done([serialize + return via BFF])
+    ninsuf --> done
+    s3 --> done
+    t7 --> done
+    tinsuf --> done
+    tfail --> done
+
+    classDef guard fill:#fee2e2,stroke:#b91c1c,color:#111;
+    classDef llm fill:#ede9fe,stroke:#6d28d9,color:#111;
+    classDef det fill:#d1fae5,stroke:#047857,color:#111;
+    class n1,n4,t1,t2,t4,t5,t6 guard;
+    class n3,t3 llm;
+    class s1,s2,t0 det;

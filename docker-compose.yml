@@ -11,6 +11,20 @@
 name: valtide
 
 services:
+  # ---- Observability backend (OTel Collector + Loki + Tempo + Mimir + Grafana) ----
+  # Single dev image; app tiers emit OTLP here. In GCP/AWS this is replaced by a
+  # standalone otel-collector-contrib whose exporters target AMP/Trace or AMP/X-Ray
+  # while the app services stay byte-identical (vendor-neutral seam). O1 decision.
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    environment:
+      - OTEL_METRIC_EXPORT_INTERVAL=5000
+    ports:
+      - "127.0.0.1:3001:3000"   # Grafana UI (localhost only)
+      - "4317:4317"             # OTLP gRPC (internal net)
+      - "4318:4318"             # OTLP HTTP (internal net)
+    networks: [valtide-net]
+
   postgres:
     build:
       context: ./valtide-db
@@ -54,10 +68,38 @@ services:
       VT_LLM_MODEL: ${VT_LLM_MODEL:-gemini-3.6-flash}
       VT_LLM_API_KEY: ${VT_LLM_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # OpenAI-compatible aggregators (used by availability precedence in
+      # config.resolved_provider: OpenRouter -> omni -> gemini -> mock).
+      OPEN_ROUTER_KEY: ${OPEN_ROUTER_KEY:-}
+      OMNI_ROUTE_KEY: ${OMNI_ROUTE_KEY:-}
+      VT_OPENROUTER_MODEL: ${VT_OPENROUTER_MODEL:-deepseek/deepseek-v4-flash-0731:free}
+      VT_OMNI_MODEL_ORDER: ${VT_OMNI_MODEL_ORDER:-auto/free,auto/cheap,auto/fast,auto/best-fast}
+      # Local Omni Route (highest priority). Host 127.0.0.1 is unreachable
+      # from inside the container, so the default base URL uses
+      # host.docker.internal; extra_hosts below maps it to the host gateway.
+      LOCAL_OMNI_KEY: ${LOCAL_OMNI_KEY:-}
+      VT_LOCAL_OMNI_BASE_URL: ${VT_LOCAL_OMNI_BASE_URL:-http://host.docker.internal:20128/v1}
+      VT_LOCAL_OMNI_MODEL_ORDER: ${VT_LOCAL_OMNI_MODEL_ORDER:-auto/free,auto/cheap,auto/fast,auto/best-fast}
+      # Orchestration framework: 'native' (default) or 'langchain' (LangGraph + LangSmith).
+      VT_LLM_FRAMEWORK: ${VT_LLM_FRAMEWORK:-native}
+      # LangSmith agent tracing: no-op unless VT_LANGSMITH_TRACING=true AND a key is set.
+      VT_LANGSMITH_TRACING: ${VT_LANGSMITH_TRACING:-false}
+      VT_LANGSMITH_API_KEY: ${VT_LANGSMITH_API_KEY:-}
+      VT_LANGSMITH_PROJECT: ${VT_LANGSMITH_PROJECT:-valtide-agents}
+      VT_LANGSMITH_ENDPOINT: ${VT_LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
       VT_INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+      # Data-source modes: 'live' (real Yahoo Finance via yfinance) by
+      # default; 'synthetic' is test-only (pinned in conftest).
+      VT_MARKET_DATA_MODE: ${VT_MARKET_DATA_MODE:-live}
+      VT_NEWS_MODE: ${VT_NEWS_MODE:-live}
+      # OTel: empty by default (tracing off). Set to http://lgtm:4318 to enable.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: valtide-agent
     ports:
       - "127.0.0.1:8000:8000"   # localhost only — internal service, exposed for Swagger in dev
     depends_on: [postgres, redis, mongo]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach the Local Omni Route on the host
     networks: [valtide-net]
 
   bff:
@@ -69,6 +111,12 @@ services:
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       RATE_LIMIT: ${RATE_LIMIT:-60}
+      # Upstream timeout to the agent. Default 20s is fine for fast paid
+      # models; free/cheap models on the multi-call FR3 graph can take
+      # longer, so allow an override (120s for free-tier test runs).
+      AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-300000}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: valtide-bff
     ports:
       - "8080:8080"             # client-facing
     depends_on: [agent]
@@ -79,6 +127,8 @@ services:
       context: ./valtide-ui
     environment:
       VITE_BFF_BASE_URL: ${VITE_BFF_BASE_URL:-http://localhost:8080}
+      # Browser-side OTLP collector URL (host-reachable). Empty = UI tracing off.
+      VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ${VITE_OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "3000:3000"
     depends_on: [bff]

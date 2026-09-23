@@ -42,6 +42,16 @@ evidence → INSUFFICIENT_EVIDENCE, never a guess.
 - **Logical layers**, not separate deployables.
 - **Full build in one pass.**
 - Files kept 250–300 lines, standard headers, structured logging, docstrings/comments.
+- **LangChain migration (2026-09-18):** FR1/FR3 agents re-implemented as **LangGraph**
+  state machines reaching Gemini via **langchain-google-genai**, with **LangSmith** agent
+  tracing and an **OpenTelemetry + Grafana LGTM** stack for API/UI observability. Selected
+  by `VT_LLM_FRAMEWORK` (`native` default = original hand-rolled path; `langchain` = graphs)
+  so the migration is fully reversible. The deterministic engine (FR2/FR4), guardrails,
+  schemas, error taxonomy, DB, and BFF are unchanged; graph outputs are proven byte/exact-
+  equivalent to native on all paths. Pins bumped to one coherent modern stack:
+  `pydantic 2.13.5`, `google-genai 2.24.0`, `langchain-core 1.6.3`, `langgraph 1.2.11`,
+  `langchain-google-genai 4.4.0`, `langsmith 0.12.6`. See `langchain-upgrade.md` +
+  `langchain-upgrade-changelog.md` at repo root.
 
 ## 3b. Test matrix (all green, 2026-09-07)
 

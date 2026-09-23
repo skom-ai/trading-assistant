@@ -1,0 +1,54 @@
+{
+  "analog_disclaimer": "Illustrative historical precedent, not a backtest or guarantee. Past outcomes do not indicate future results.",
+  "analog_error": null,
+  "analogs": [
+    {
+      "case_date": "2018-07-25",
+      "case_ticker": "AMD",
+      "catalyst_type": "EARNINGS_BEAT",
+      "match_reason": "same catalyst: earnings beat",
+      "rank": 1,
+      "real_outcome": "Rallied on datacenter share-gain narrative.",
+      "similarity_score": 0.52288
+    },
+    {
+      "case_date": "2023-05-25",
+      "case_ticker": "NVDA",
+      "catalyst_type": "GUIDANCE_RAISE",
+      "match_reason": "closest available factor profile",
+      "rank": 2,
+      "real_outcome": "Rose ~24% within two sessions; trend continued.",
+      "similarity_score": 0.43382
+    },
+    {
+      "case_date": "2023-02-01",
+      "case_ticker": "META",
+      "catalyst_type": "GUIDANCE_RAISE",
+      "match_reason": "closest available factor profile",
+      "rank": 3,
+      "real_outcome": "Jumped ~20% on efficiency framing; multi-month uptrend.",
+      "similarity_score": 0.38831
+    }
+  ],
+  "disclaimer": "Educational decision-support only. Not investment advice, not a recommendation to trade. Levels are hypothetical and illustrative; assumptions and limitations apply (FINRA 2214).",
+  "strategy": {
+    "applicability_flags": {
+      "entry": "conditional_reference_only"
+    },
+    "cited_evidence_ids": [
+      "AAPL-fRSI_14",
+      "AAPL-fMOMENTUM_3M",
+      "AAPL-fMOMENTUM_6M",
+      "AAPL-fVOLUME_TREND",
+      "AAPL-fVALUATION_ZSCORE"
+    ],
+    "confidence": "LOW",
+    "entry": null,
+    "holding_horizon": "1-3 months",
+    "rationale": "WAIT based on news=ALREADY_PRICED_IN, 3M momentum=0.24.",
+    "stop": null,
+    "target": null,
+    "verdict": "WAIT"
+  },
+  "symbol": "AAPL"
+}

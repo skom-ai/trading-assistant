@@ -23,6 +23,8 @@ from app.api.routes import router
 from app.core.config import get_settings
 from app.core.errors import DomainError
 from app.core.logging import configure_logging, set_correlation_id
+from app.core.observability import configure_observability
+from app.core.otel import configure_otel
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,8 @@ def create_app() -> FastAPI:
     """
     settings = get_settings()
     configure_logging(settings.log_level, settings.service_name)
+    # Opt-in agent tracing; strict no-op unless VT_LANGSMITH_TRACING=true + key.
+    configure_observability(settings)
 
     app = FastAPI(
         title="Valtide Agent Service",
@@ -73,6 +77,8 @@ def create_app() -> FastAPI:
         return {"status": "ok", "service": settings.service_name}
 
     app.include_router(router)
+    # Opt-in API tracing (OTLP -> Grafana LGTM); no-op unless OTEL endpoint set.
+    configure_otel(app, settings.service_name)
     logger.info("Valtide agent service ready (llm_provider=%s)", settings.llm_provider)
     return app
 

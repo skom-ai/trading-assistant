@@ -5,8 +5,9 @@
  * Author: Sunil+Ai Assistant
  * Date: 2026-09-07
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ModuleId } from '../types';
+import { valtideApi, StrategyResponse, ApiError } from '../api/client';
 
 interface StrategyStudioProps {
   activeTicker: string;
@@ -21,24 +22,72 @@ export const StrategyStudio: React.FC<StrategyStudioProps> = ({
 }) => {
   const [alertArmed, setAlertArmed] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1D' | '1W' | '4H'>('1D');
+  // Live FR3 strategy (null => show computed mock levels as fallback).
+  const [live, setLive] = useState<StrategyResponse | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const tickerPrice = activeTicker === 'NVDA' ? 128.45 : activeTicker === 'MSFT' ? 428.10 : activeTicker === 'AAPL' ? 228.30 : 139.75;
   const changePct = activeTicker === 'NVDA' ? '+3.38%' : '+1.42%';
-  const hypoEntry = (tickerPrice * 0.953).toFixed(2);
-  const targetR1 = (tickerPrice * 1.121).toFixed(2);
-  const stopLoss = (tickerPrice * 0.897).toFixed(2);
-  const riskReward = '2.95x';
+
+  // Live strategy fields (null-safe). WAIT/AVOID/INSUFFICIENT have null levels,
+  // rendered as 'N/A' rather than a fabricated number.
+  const s = live?.strategy as
+    | { verdict?: string; entry?: number | null; target?: number | null; stop?: number | null; rationale?: string; confidence?: string; holding_horizon?: string }
+    | undefined;
+  const liveVerdict = s?.verdict;
+  const fmt = (v: number | null | undefined, mockVal: string): string =>
+    live ? (typeof v === 'number' ? v.toFixed(2) : 'N/A') : mockVal;
+
+  // Derived levels prefer live values; fall back to the computed mock levels.
+  const hypoEntry = fmt(s?.entry, (tickerPrice * 0.953).toFixed(2));
+  const targetR1 = fmt(s?.target, (tickerPrice * 1.121).toFixed(2));
+  const stopLoss = fmt(s?.stop, (tickerPrice * 0.897).toFixed(2));
+  const riskReward = live
+    ? (typeof s?.entry === 'number' && typeof s?.target === 'number' && typeof s?.stop === 'number' && s.entry !== s.stop
+        ? `${(Math.abs((s.target - s.entry) / (s.entry - s.stop))).toFixed(2)}x`
+        : 'N/A')
+    : '2.95x';
+
+  /**
+   * Call the live FR3 strategy endpoint and overlay the result.
+   * Falls back to the computed mock plan on ApiError and toasts the code.
+   */
+  const fetchStrategy = useCallback(
+    async (symbol: string) => {
+      setLoading(true);
+      try {
+        const resp = await valtideApi.strategy(symbol);
+        setLive(resp);
+        const v = (resp.strategy as { verdict?: string })?.verdict ?? 'UNKNOWN';
+        onNotify('success', `FR3 Strategy: ${v}`, `${symbol} plan generated with ${resp.analogs.length} analog(s)`);
+      } catch (err) {
+        const e = err as ApiError;
+        setLive(null); // fall back to computed mock plan
+        onNotify('error', e.code ?? 'ANALYSIS_UNAVAILABLE', e.message ?? 'Strategy generation failed; showing reference plan.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onNotify]
+  );
+
+  // Auto-generate when the active ticker changes.
+  useEffect(() => {
+    if (activeTicker) void fetchStrategy(activeTicker);
+  }, [activeTicker, fetchStrategy]);
 
   const handleExportTrace = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({
-      strategy_id: `BUY_PULLBACK_MA20_${activeTicker}`,
+      strategy_id: `${liveVerdict ?? 'BUY_PULLBACK_MA20'}_${activeTicker}`,
       timestamp: new Date().toISOString(),
       activeTicker,
       price: tickerPrice,
+      verdict: liveVerdict ?? 'BUY',
       hypo_entry: hypoEntry,
       target_r1: targetR1,
       invalidation_stop: stopLoss,
       risk_reward: riskReward,
+      source: live ? 'LIVE_FR3_API' : 'REFERENCE_MOCK',
       merkle_root: '0x7f9a882bc194d3e8a4901fec4908129d3810fec184910401bcae8841c42109aa',
       bias_audit: 'CLEAN_ZERO_LLM_MATH'
     }, null, 2));

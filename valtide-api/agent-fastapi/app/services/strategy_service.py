@@ -39,6 +39,32 @@ class StrategyService:
             analog_cases: list[dict], user_framing: str | None = None) -> dict[str, Any]:
         """Generate a strategy plus its historical analogs.
 
+        Delegates to the LangGraph FR3 flow when VT_LLM_FRAMEWORK=langchain
+        (behavior-equivalent, LangSmith-traced); otherwise runs the original
+        native orchestration below. Both share the same nodes/guardrails.
+
+        Args:
+            symbol: The resolved ticker symbol.
+            evidence: Evidence block (factors, last_price, news_label,
+                evidence_ids, catalyst, tags).
+            analog_cases: Curated cases to match against (FR4).
+            user_framing: Optional free-text framing to neutralize.
+
+        Returns:
+            A combined dict with independent "strategy" and "analogs"
+            sections and a server-authoritative disclaimer.
+        """
+        if get_settings().llm_framework.lower() == "langchain":
+            from app.agents.graphs.strategy_graph import StrategyGraph
+
+            return StrategyGraph().run(symbol, evidence, analog_cases, user_framing)
+        return self._run_native(symbol, evidence, analog_cases, user_framing)
+
+    def _run_native(self, symbol: str, evidence: dict[str, Any],
+                    analog_cases: list[dict],
+                    user_framing: str | None = None) -> dict[str, Any]:
+        """Original hand-rolled FR3 orchestration (framework=native).
+
         Args:
             symbol: The resolved ticker symbol.
             evidence: Evidence block (factors, last_price, news_label,

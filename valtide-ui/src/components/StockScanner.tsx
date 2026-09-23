@@ -5,9 +5,10 @@
  * Author: Sunil+Ai Assistant
  * Date: 2026-09-07
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { ModuleId, TickerData } from '../types';
 import { INITIAL_TICKERS, SECTORS } from '../data/mockData';
+import { valtideApi, ScanRow, ApiError } from '../api/client';
 
 interface StockScannerProps {
   onSelectTicker: (ticker: string) => void;
@@ -17,6 +18,29 @@ interface StockScannerProps {
 }
 
 type SortField = 'compositeScore' | 'price' | 'changePercent' | 'valuationZ' | 'mom3M' | 'rsi14';
+
+/** Map a live FR2 ScanRow onto the UI's TickerData shape (mock fields defaulted). */
+const scanRowToTicker = (r: ScanRow): TickerData => {
+  const f = r.factors ?? {};
+  return {
+    symbol: r.symbol,
+    name: r.symbol,
+    price: r.last_price ?? 0,
+    changePercent: 0,
+    compositeScore: Number((r.composite_score ?? 0).toFixed(1)),
+    valuationZ: f.VALUATION_ZSCORE ?? 0,
+    valuationLabel: `${(f.VALUATION_ZSCORE ?? 0).toFixed(2)}σ`,
+    peRatio: 0,
+    mom3M: f.MOMENTUM_3M ?? 0,
+    mom6M: f.MOMENTUM_6M ?? 0,
+    rsi14: f.RSI_14 ?? 0,
+    volRatio: f.VOLUME_TREND ?? 0,
+    volLabel: `${(f.VOLUME_TREND ?? 0).toFixed(2)}x`,
+    adv: '—',
+    universe: 'LIVE SCAN',
+    sector: '—',
+  };
+};
 
 export const StockScanner: React.FC<StockScannerProps> = ({
   onSelectTicker,
@@ -33,21 +57,44 @@ export const StockScanner: React.FC<StockScannerProps> = ({
   const [sortAsc, setSortAsc] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
   const [filterRsiBelow70, setFilterRsiBelow70] = useState(true);
+  // Live FR2 rows (null => not yet loaded / API failed => mock fallback).
+  const [apiRows, setApiRows] = useState<TickerData[] | null>(null);
 
   const activeSectorObj = SECTORS.find((s) => s.id === selectedSector) || SECTORS[0];
 
-  const handleComputeScan = () => {
+  /**
+   * Run the live deterministic FR2 scan; map rows to TickerData and time it.
+   * On ApiError, fall back to the mock universe (never blanks) and toast.
+   */
+  const runScan = useCallback(async () => {
     setIsComputing(true);
-    setTimeout(() => {
+    const t0 = performance.now();
+    try {
+      const resp = await valtideApi.scan();
+      setApiRows(resp.rows.map(scanRowToTicker));
+      setFallbackMode(false);
+      const ms = (performance.now() - t0).toFixed(1);
+      setLatency(parseFloat(ms));
+      onNotify('success', 'FR2 Scan Computed [LIVE]',
+        `Ranked ${resp.rows.length} of ${resp.universe_size} in ${ms}ms via Zero-LLM path`);
+    } catch (err) {
+      const e = err as ApiError;
+      setApiRows(null);       // fall back to INITIAL_TICKERS
+      setFallbackMode(true);
+      onNotify('error', e.code ?? 'SOURCE_UNAVAILABLE',
+        e.message ?? 'Live scan failed; showing reference universe.');
+    } finally {
       setIsComputing(false);
-      const randomLatency = (14 + Math.random() * 8).toFixed(1);
-      setLatency(parseFloat(randomLatency));
-      onNotify(
-        'success',
-        'Sector Scan Computed',
-        `Evaluated 78 constituents in ${randomLatency}ms via Zero-LLM math path`
-      );
-    }, 450);
+    }
+  }, [onNotify]);
+
+  // Auto-run the live scan on mount.
+  useEffect(() => {
+    void runScan();
+  }, [runScan]);
+
+  const handleComputeScan = () => {
+    void runScan();
   };
 
   const handleCopyHash = () => {
@@ -56,7 +103,8 @@ export const StockScanner: React.FC<StockScannerProps> = ({
   };
 
   const sortedTickers = useMemo(() => {
-    let list = [...INITIAL_TICKERS];
+    // Prefer live API rows; fall back to the mock universe when unavailable.
+    let list = [...(apiRows ?? INITIAL_TICKERS)];
     if (filterRsiBelow70) {
       list = list.filter((t) => t.rsi14 <= 70);
     }
@@ -67,7 +115,7 @@ export const StockScanner: React.FC<StockScannerProps> = ({
       return valA < valB ? 1 : -1;
     });
     return list;
-  }, [sortField, sortAsc, filterRsiBelow70]);
+  }, [sortField, sortAsc, filterRsiBelow70, apiRows]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {

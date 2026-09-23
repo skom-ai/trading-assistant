@@ -1,0 +1,40 @@
+%% Valtide — Request lifecycle sequence (FR3 strategy + FR4 analogs)
+%% Traces one user request end-to-end. FR1 (news-check) and FR2 (scan)
+%% follow the same UI -> BFF -> agent path; FR2 is a zero-LLM branch.
+%% Source: valtide-ui/src/api/client.ts, bff-nestjs/src/agent/agent.client.ts,
+%%         bff correlation.middleware.ts, agent-fastapi/app/api/routes.py,
+%%         app/services/strategy_service.py, app/adapters/llm_adapter.py
+sequenceDiagram
+    autonumber
+    actor U as Investor
+    participant UI as valtide-ui (React)
+    participant BFF as BFF (NestJS :8080)
+    participant AG as Agent (FastAPI :8000)
+    participant Y as Yahoo Finance
+    participant LLM as LLM Provider
+    participant EN as Engine (factors / analogs)
+
+    U->>UI: pick ticker in Strategy Studio
+    UI->>BFF: POST /api/v1/strategy (symbol, newsLabel)
+    Note over BFF: CorrelationMiddleware mints X-Correlation-Id<br/>ValidationPipe validates DTO
+    BFF->>AG: POST /internal/v1/strategy<br/>headers: X-Internal-Token, X-Correlation-Id
+
+    Note over AG: bind correlation id
+    AG->>Y: fetch market data (httpx)
+    Y-->>AG: OHLCV + P/E (synthetic fallback on failure)
+    AG->>EN: compute factors + composite score
+    EN-->>AG: evidence block
+
+    Note over AG: framing neutralization + sufficiency gate
+    AG->>LLM: complete_json(FR3_STRATEGY, evidence)
+    LLM-->>AG: structured strategy (Buy/Wait/Avoid)
+    Note over AG: coherence validator<br/>(bounded regenerate-or-fail, MAX=1)
+    AG->>EN: match_analogs (isolated, partial-failure safe)
+    EN-->>AG: analog matches
+    Note over AG: release gate: language linter + traceability
+
+    AG-->>BFF: 200 (strategy, analogs, disclaimers)
+    BFF-->>UI: 200 JSON (or taxonomy error passthrough)
+    UI-->>U: render plan + analogs + disclaimer
+
+    Note over U,EN: On failure a DomainError code+message+correlation_id propagates unchanged<br/>as 404 / 422 / 502 / 503. INSUFFICIENT_EVIDENCE is a 200 body-state.

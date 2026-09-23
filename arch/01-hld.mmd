@@ -1,0 +1,54 @@
+%% Valtide — High-Level Design (big picture: UI, API, DB, integrations)
+%% Source: docker-compose.yml, valtide-ui/src/api/client.ts,
+%%         bff-nestjs/src/agent/agent.client.ts, agent-fastapi/app/api/routes.py
+%% Principle P1: the UI talks ONLY to the BFF; the BFF is the sole public,
+%% AI-mediating API; the FastAPI agent + datastores are internal-only.
+flowchart LR
+    user["Investor<br/>(Browser)"]
+
+    subgraph client["Client tier"]
+        ui["valtide-ui<br/>React + Vite : 3000<br/>SPA"]
+    end
+
+    subgraph netw["Docker network: valtide-net (internal)"]
+        subgraph api["API tier"]
+            bff["BFF<br/>NestJS : 8080<br/>sole public API"]
+            agent["Agent<br/>FastAPI : 8000<br/>internal only"]
+        end
+
+        subgraph data["Data tier (schema-provisioned)"]
+            pg[("PostgreSQL<br/>system of record : 5432")]
+            redis[("Redis<br/>cache / session / rate-limit")]
+            mongo[("MongoDB<br/>LLM trace audit")]
+        end
+
+        lgtm["Grafana LGTM<br/>OTLP : 4317 / 4318"]
+    end
+
+    subgraph ext["External integrations"]
+        llm["LLM Providers<br/>Local Omni / OpenRouter / omni / Gemini / mock"]
+        yahoo["Yahoo Finance<br/>chart / quoteSummary / news"]
+    end
+
+    user -->|HTTPS| ui
+    ui -->|"REST /api/v1 (scan, news-check, strategy)"| bff
+    bff -->|"X-Internal-Token /internal/v1"| agent
+    agent -.->|structured JSON| llm
+    agent -->|httpx| yahoo
+    agent -.->|SQL| pg
+    agent -.-> redis
+    agent -.->|traces| mongo
+    bff -.->|OTLP| lgtm
+    agent -.->|OTLP| lgtm
+
+    classDef frontend fill:#0ea5e9,stroke:#0369a1,color:#fff;
+    classDef backend fill:#10b981,stroke:#047857,color:#fff;
+    classDef database fill:#f59e0b,stroke:#b45309,color:#111;
+    classDef external fill:#8b5cf6,stroke:#6d28d9,color:#fff;
+    classDef cloud fill:#64748b,stroke:#334155,color:#fff;
+
+    class ui frontend;
+    class bff,agent backend;
+    class pg,redis,mongo database;
+    class llm,yahoo,user external;
+    class lgtm cloud;

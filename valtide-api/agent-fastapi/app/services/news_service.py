@@ -41,6 +41,28 @@ class NewsCheckService:
     def run(self, symbol: str, simulate_empty: bool = False) -> dict[str, Any]:
         """Execute the FR1 pipeline for a resolvable ticker.
 
+        Delegates to the LangGraph FR1 flow when VT_LLM_FRAMEWORK=langchain
+        (behavior-equivalent, LangSmith-traced); otherwise runs the original
+        native orchestration below. Both share the same nodes/guardrails.
+
+        Args:
+            symbol: The resolved ticker symbol.
+            simulate_empty: Force an empty headline set (edge-case testing).
+
+        Returns:
+            A response dict: label, rationale, citations, disclaimer.
+        """
+        from app.core.config import get_settings
+
+        if get_settings().llm_framework.lower() == "langchain":
+            from app.agents.graphs.news_graph import NewsGraph
+
+            return NewsGraph(news=self._news).run(symbol, simulate_empty=simulate_empty)
+        return self._run_native(symbol, simulate_empty=simulate_empty)
+
+    def _run_native(self, symbol: str, simulate_empty: bool = False) -> dict[str, Any]:
+        """Original hand-rolled FR1 orchestration (framework=native).
+
         Args:
             symbol: The resolved ticker symbol.
             simulate_empty: Force an empty headline set (edge-case testing).

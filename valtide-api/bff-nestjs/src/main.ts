@@ -10,12 +10,17 @@
  * Source: specs/arch/SDD.md §2.1-2.3
  */
 import 'reflect-metadata';
+import { startOtel } from './otel';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { loadConfig } from './common/config';
 import { TaxonomyExceptionFilter } from './common/error.filter';
+
+// Start tracing before anything else so HTTP + axios are instrumented.
+// No-op unless OTEL_EXPORTER_OTLP_ENDPOINT is set.
+startOtel();
 
 /**
  * Bootstrap and start the NestJS BFF.

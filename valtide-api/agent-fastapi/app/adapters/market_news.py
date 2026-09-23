@@ -32,8 +32,8 @@ def _seeded_rng(symbol: str) -> random.Random:
     return random.Random(seed)
 
 
-class MarketDataProvider:
-    """Fetches normalized, provenance-stamped market data."""
+class _SyntheticMarketDataProvider:
+    """Deterministic synthetic market data (TEST-ONLY; seeded by symbol)."""
 
     def fetch(self, symbol: str) -> MarketData:
         """Fetch market data for one symbol (deterministic synthetic).
@@ -64,8 +64,49 @@ class MarketDataProvider:
         )
 
 
-class NewsProvider:
-    """Fetches normalized headlines for a ticker."""
+class MarketDataProvider:
+    """Market-data facade: real Yahoo Finance data by default.
+
+    Dispatches by ``VT_MARKET_DATA_MODE``: 'live' (default) uses yfinance;
+    'synthetic' (TEST-ONLY) uses the deterministic generator. In live mode a
+    per-symbol failure falls back to synthetic for that symbol only (logged
+    as a WARNING) so one bad ticker never aborts an 80-symbol scan.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the facade with both backends and the active mode."""
+        from app.core.config import get_settings
+
+        self._mode = get_settings().market_data_mode.lower()
+        self._synthetic = _SyntheticMarketDataProvider()
+        self._live = None
+        if self._mode == "live":
+            from app.adapters.live_market_news import LiveMarketDataProvider
+
+            self._live = LiveMarketDataProvider()
+
+    def fetch(self, symbol: str) -> MarketData:
+        """Fetch market data for one symbol per the active mode.
+
+        Args:
+            symbol: Ticker symbol.
+
+        Returns:
+            A normalized MarketData value object (live in 'live' mode; the
+            synthetic fallback is used only if a live fetch fails).
+        """
+        if self._mode != "live" or self._live is None:
+            return self._synthetic.fetch(symbol)
+        try:
+            return self._live.fetch(symbol)
+        except Exception as exc:  # noqa: BLE001 - degrade one symbol, not the scan
+            logger.warning("live market fetch failed for %s (%s); using synthetic "
+                           "fallback for THIS symbol only", symbol, exc)
+            return self._synthetic.fetch(symbol)
+
+
+class _SyntheticNewsProvider:
+    """Deterministic synthetic headlines (TEST-ONLY)."""
 
     _TEMPLATES = [
         ("Reuters", "{s} reports quarterly earnings beat, raises guidance"),
@@ -101,3 +142,51 @@ class NewsProvider:
                                 published_at=published, content_hash=digest))
         logger.debug("news generated for %s (%d headlines)", symbol, len(out))
         return out
+
+
+class NewsProvider:
+    """News facade: real Yahoo Finance headlines by default.
+
+    Dispatches by ``VT_NEWS_MODE``: 'live' (default) uses yfinance news;
+    'synthetic' (TEST-ONLY) uses deterministic templates. In live mode a
+    fetch failure falls back to synthetic (logged) so FR1 stays functional.
+    An ``empty=True`` request is honored in both modes.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the facade with both backends and the active mode."""
+        from app.core.config import get_settings
+
+        self._mode = get_settings().news_mode.lower()
+        self._synthetic = _SyntheticNewsProvider()
+        self._live = None
+        if self._mode == "live":
+            from app.adapters.live_market_news import LiveNewsProvider
+
+            self._live = LiveNewsProvider()
+
+    def fetch(self, symbol: str, empty: bool = False) -> list[Headline]:
+        """Fetch headlines for a symbol per the active mode.
+
+        Args:
+            symbol: Ticker symbol.
+            empty: When True, return [] regardless of mode.
+
+        Returns:
+            A list of normalized Headline objects (possibly empty). Live
+            results in 'live' mode; synthetic only if a live fetch fails.
+        """
+        if empty:
+            return []
+        if self._mode != "live" or self._live is None:
+            return self._synthetic.fetch(symbol)
+        try:
+            headlines = self._live.fetch(symbol)
+            # A live source legitimately returning zero headlines must NOT be
+            # masked by synthetic data — that would fabricate news. Surface
+            # the empty set so FR1 can short-circuit to INSUFFICIENT_EVIDENCE.
+            return headlines
+        except Exception as exc:  # noqa: BLE001 - degrade to synthetic on error
+            logger.warning("live news fetch failed for %s (%s); using synthetic "
+                           "fallback", symbol, exc)
+            return self._synthetic.fetch(symbol)

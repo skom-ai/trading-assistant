@@ -5,9 +5,10 @@
  * Author: Sunil+Ai Assistant
  * Date: 2026-09-07
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ModuleId } from '../types';
 import { VERDICT_STATES, ASSETS } from '../data/mockData';
+import { valtideApi, NewsResponse, ApiError } from '../api/client';
 
 interface OpportunityCheckProps {
   activeTicker: string;
@@ -15,6 +16,14 @@ interface OpportunityCheckProps {
   onNavigate: (module: ModuleId) => void;
   onNotify: (type: 'success' | 'info' | 'warning' | 'error', title: string, detail?: string) => void;
 }
+
+/** Map the API's FR1 label enum to the UI's verdictClass display string. */
+const LABEL_TO_CLASS: Record<string, string> = {
+  REAL_CATALYST: 'REAL CATALYST',
+  ALREADY_PRICED_IN: 'ALREADY PRICED IN',
+  HYPE: 'HYPE DETECTED',
+  INSUFFICIENT_EVIDENCE: 'INSUFFICIENT EVIDENCE',
+};
 
 export const OpportunityCheck: React.FC<OpportunityCheckProps> = ({
   activeTicker,
@@ -24,12 +33,67 @@ export const OpportunityCheck: React.FC<OpportunityCheckProps> = ({
 }) => {
   const [tickerInput, setTickerInput] = useState(activeTicker);
   const [selectedPreset, setSelectedPreset] = useState<'real-catalyst' | 'already-priced' | 'hype' | 'insufficient'>('real-catalyst');
+  // Live FR1 verdict overlaid on the mock presentation (null => show mock only).
+  const [live, setLive] = useState<NewsResponse | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const verdict = VERDICT_STATES[selectedPreset];
+  const mock = VERDICT_STATES[selectedPreset];
+
+  // The rendered verdict = mock base with live FR1 fields overlaid when present.
+  const verdict = live
+    ? {
+        ...mock,
+        ticker: live.symbol,
+        verdictClass: (LABEL_TO_CLASS[live.label] ?? mock.verdictClass) as typeof mock.verdictClass,
+        rationale: live.rationale || mock.rationale,
+        citationsCount: `${live.citations.length} CITATION(S) [LIVE]`,
+        citations: live.citations.length
+          ? live.citations.map((c) => ({
+              pub: c.source ?? 'SOURCE',
+              icon: 'article',
+              title: c.title ?? '',
+              desc: c.url ?? '',
+              time: c.published_at ?? '',
+              cred: 'LIVE',
+              hash: (c.hash ?? '').slice(0, 16),
+            }))
+          : mock.citations,
+      }
+    : mock;
 
   // Regex validation
   const regexPattern = /^[A-Z.-]{1,10}$/;
   const isValidTicker = regexPattern.test(tickerInput.trim().toUpperCase());
+
+  /**
+   * Call the live FR1 news-check endpoint for a ticker and overlay the result.
+   * Falls back to the mock verdict (never blanks) and surfaces ApiError via toast.
+   */
+  const fetchVerdict = useCallback(
+    async (symbol: string, simulateEmpty = false) => {
+      setLoading(true);
+      try {
+        const resp = await valtideApi.newsCheck(symbol, simulateEmpty);
+        setLive(resp);
+        onNotify('success', `FR1 Verdict: ${resp.label}`, `${symbol} evaluated from ${resp.citations.length} citation(s)`);
+      } catch (err) {
+        const e = err as ApiError;
+        setLive(null); // fall back to mock presentation
+        onNotify('error', e.code ?? 'ANALYSIS_UNAVAILABLE', e.message ?? 'News check failed; showing reference data.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onNotify]
+  );
+
+  // Auto-evaluate when the active ticker changes (live search -> analysis).
+  useEffect(() => {
+    if (activeTicker) {
+      setTickerInput(activeTicker);
+      void fetchVerdict(activeTicker);
+    }
+  }, [activeTicker, fetchVerdict]);
 
   const handleTickerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,14 +106,15 @@ export const OpportunityCheck: React.FC<OpportunityCheckProps> = ({
     }
 
     onSelectTicker(clean);
-    // Switch preset based on ticker
+    // Preset drives the mock fallback presentation only; live data overrides it.
     if (clean === 'NVDA') setSelectedPreset('real-catalyst');
     else if (clean === 'AAPL') setSelectedPreset('already-priced');
     else if (clean === 'TSLA') setSelectedPreset('hype');
     else if (clean === 'IONQ') setSelectedPreset('insufficient');
     else setSelectedPreset('real-catalyst');
 
-    onNotify('info', `Opportunity Evaluated: ${clean}`, '48h-72h bounded wire news analyzed');
+    // Live FR1 call (the useEffect on activeTicker also fires; both are idempotent).
+    void fetchVerdict(clean);
   };
 
   const selectPresetTab = (preset: 'real-catalyst' | 'already-priced' | 'hype' | 'insufficient') => {
@@ -64,6 +129,8 @@ export const OpportunityCheck: React.FC<OpportunityCheckProps> = ({
         : 'IONQ';
     setTickerInput(targetTicker);
     onSelectTicker(targetTicker);
+    // 'insufficient' preset demonstrates the empty-evidence path on the live API.
+    void fetchVerdict(targetTicker, preset === 'insufficient');
   };
 
   const handleExportCitations = () => {
@@ -142,10 +209,11 @@ export const OpportunityCheck: React.FC<OpportunityCheckProps> = ({
 
           <button
             type="submit"
-            className="px-5 py-2 bg-primary-container hover:bg-primary-container/90 text-on-primary-container rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+            disabled={loading}
+            className="px-5 py-2 bg-primary-container hover:bg-primary-container/90 text-on-primary-container rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
             <span className="material-symbols-outlined text-[16px]">radar</span>
-            EVALUATE NEWS
+            {loading ? 'EVALUATING…' : 'EVALUATE NEWS'}
           </button>
         </form>
 

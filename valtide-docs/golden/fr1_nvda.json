@@ -1,0 +1,17 @@
+{
+  "citations": [
+    {
+      "hash": "108ddbc7bb38a510ebf8f5bdd6b6858ff755203370ae468f9beaeca8a0dd1f23",
+      "id": "NVDA-h0",
+      "published_at": "2026-09-16T15:10:24.737878+00:00",
+      "source": "Bloomberg",
+      "title": "NVDA unveils new product launch to strong demand",
+      "url": "https://news.example/nvda/0"
+    }
+  ],
+  "confidence_hint": "MEDIUM",
+  "disclaimer": "Educational decision-support only. Not investment advice. Verdicts summarize cited public news and may be incomplete.",
+  "label": "REAL_CATALYST",
+  "rationale": "Classified REAL_CATALYST from 1 cited headline(s).",
+  "symbol": "NVDA"
+}

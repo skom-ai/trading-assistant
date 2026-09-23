@@ -114,3 +114,6 @@ scripts/
 # ─────────────────────────────────────────────
 valtide-api/bff-nestjs/node_modules/
 valtide-api/agent-fastapi/.pytest_cache/
+
+.verify_out
+infra/

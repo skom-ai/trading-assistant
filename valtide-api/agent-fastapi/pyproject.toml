@@ -12,7 +12,11 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi==0.115.6",
     "uvicorn[standard]==0.34.0",
-    "pydantic==2.10.4",
+    # pydantic + google-genai bumped forward in Phase 1 to satisfy the
+    # LangChain-Google stack (langchain-google-genai 4.x requires
+    # google-genai>=2.20 which requires pydantic>=2.12.5). One coherent
+    # modern stack; the native Gemini adapter API shape is unchanged.
+    "pydantic==2.13.5",
     "pydantic-settings==2.7.1",
     "sqlalchemy==2.0.36",
     "psycopg[binary]==3.2.3",
@@ -22,7 +26,23 @@ dependencies = [
     "pandas==2.2.3",
     "httpx==0.28.1",
     "python-json-logger==3.2.1",
-    "google-genai==0.8.0",
+    "google-genai==2.24.0",
+    # --- LangChain migration stack (Phase 1) ---
+    # Agents re-implemented as LangGraph state machines; Gemini reached via
+    # langchain-google-genai; LangSmith provides agent observability. All
+    # pinned exactly (no open ranges) per enterprise dependency hygiene.
+    "langchain-core==1.6.3",
+    "langgraph==1.2.11",
+    "langchain-google-genai==4.4.0",
+    "langsmith==0.12.6",
+    # --- OpenTelemetry (Phase 6): API observability, OTLP -> Grafana LGTM ---
+    # Vendor-neutral: the app emits OTLP; the collector/exporter (LGTM local,
+    # GCP AMP/Trace, AWS AMP/X-Ray) is chosen by config, not code. Gated at
+    # runtime on OTEL_EXPORTER_OTLP_ENDPOINT so it is a no-op when unset.
+    "opentelemetry-sdk==1.29.0",
+    "opentelemetry-exporter-otlp-proto-http==1.29.0",
+    "opentelemetry-instrumentation-fastapi==0.50b0",
+    "opentelemetry-instrumentation-httpx==0.50b0",
 ]
 
 [project.optional-dependencies]

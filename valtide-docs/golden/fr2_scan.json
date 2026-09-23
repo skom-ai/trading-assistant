@@ -1,0 +1,146 @@
+{
+  "rows": [
+    {
+      "composite_score": 0.804947,
+      "factors": {
+        "MOMENTUM_3M": 0.412519,
+        "MOMENTUM_6M": 0.454709,
+        "RSI_14": 58.537621,
+        "VALUATION_ZSCORE": null,
+        "VOLUME_TREND": 1.316906
+      },
+      "last_price": 79.811,
+      "provenance": "synthetic-yfinance-v1:UNH",
+      "rank": 1,
+      "symbol": "UNH"
+    },
+    {
+      "composite_score": 0.797571,
+      "factors": {
+        "MOMENTUM_3M": 0.425494,
+        "MOMENTUM_6M": 0.757971,
+        "RSI_14": 58.619684,
+        "VALUATION_ZSCORE": -0.260606,
+        "VOLUME_TREND": 0.980393
+      },
+      "last_price": 528.5945,
+      "provenance": "synthetic-yfinance-v1:INTC",
+      "rank": 2,
+      "symbol": "INTC"
+    },
+    {
+      "composite_score": 0.78091,
+      "factors": {
+        "MOMENTUM_3M": 0.327478,
+        "MOMENTUM_6M": 0.329558,
+        "RSI_14": 51.110815,
+        "VALUATION_ZSCORE": -1.420557,
+        "VOLUME_TREND": 1.046499
+      },
+      "last_price": 323.0136,
+      "provenance": "synthetic-yfinance-v1:WMT",
+      "rank": 3,
+      "symbol": "WMT"
+    },
+    {
+      "composite_score": 0.776734,
+      "factors": {
+        "MOMENTUM_3M": 0.304853,
+        "MOMENTUM_6M": 0.423568,
+        "RSI_14": 75.040963,
+        "VALUATION_ZSCORE": -1.605498,
+        "VOLUME_TREND": 1.218657
+      },
+      "last_price": 336.4012,
+      "provenance": "synthetic-yfinance-v1:JNJ",
+      "rank": 4,
+      "symbol": "JNJ"
+    },
+    {
+      "composite_score": 0.744261,
+      "factors": {
+        "MOMENTUM_3M": 0.345384,
+        "MOMENTUM_6M": 0.457468,
+        "RSI_14": 57.685963,
+        "VALUATION_ZSCORE": null,
+        "VOLUME_TREND": 1.150775
+      },
+      "last_price": 471.2295,
+      "provenance": "synthetic-yfinance-v1:SLB",
+      "rank": 5,
+      "symbol": "SLB"
+    },
+    {
+      "composite_score": 0.700459,
+      "factors": {
+        "MOMENTUM_3M": 0.237939,
+        "MOMENTUM_6M": 0.422414,
+        "RSI_14": 38.05678,
+        "VALUATION_ZSCORE": -0.862774,
+        "VOLUME_TREND": 1.02009
+      },
+      "last_price": 304.2469,
+      "provenance": "synthetic-yfinance-v1:AAPL",
+      "rank": 6,
+      "symbol": "AAPL"
+    },
+    {
+      "composite_score": 0.670681,
+      "factors": {
+        "MOMENTUM_3M": 0.218904,
+        "MOMENTUM_6M": 0.287098,
+        "RSI_14": 49.530932,
+        "VALUATION_ZSCORE": -0.613473,
+        "VOLUME_TREND": 0.963406
+      },
+      "last_price": 358.0337,
+      "provenance": "synthetic-yfinance-v1:SNOW",
+      "rank": 7,
+      "symbol": "SNOW"
+    },
+    {
+      "composite_score": 0.657787,
+      "factors": {
+        "MOMENTUM_3M": 0.050994,
+        "MOMENTUM_6M": 0.04889,
+        "RSI_14": 47.046943,
+        "VALUATION_ZSCORE": -1.621773,
+        "VOLUME_TREND": 1.123917
+      },
+      "last_price": 188.5422,
+      "provenance": "synthetic-yfinance-v1:AMZN",
+      "rank": 8,
+      "symbol": "AMZN"
+    },
+    {
+      "composite_score": 0.653174,
+      "factors": {
+        "MOMENTUM_3M": 0.129318,
+        "MOMENTUM_6M": 0.518387,
+        "RSI_14": 46.091936,
+        "VALUATION_ZSCORE": null,
+        "VOLUME_TREND": 0.9691
+      },
+      "last_price": 308.7775,
+      "provenance": "synthetic-yfinance-v1:SHOP",
+      "rank": 9,
+      "symbol": "SHOP"
+    },
+    {
+      "composite_score": 0.640446,
+      "factors": {
+        "MOMENTUM_3M": 0.054308,
+        "MOMENTUM_6M": 0.232064,
+        "RSI_14": 50.875181,
+        "VALUATION_ZSCORE": -1.197148,
+        "VOLUME_TREND": 0.969562
+      },
+      "last_price": 442.5796,
+      "provenance": "synthetic-yfinance-v1:BLK",
+      "rank": 10,
+      "symbol": "BLK"
+    }
+  ],
+  "universe_size": 80,
+  "weight_version": 1
+}

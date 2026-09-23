@@ -138,7 +138,10 @@ def get_llm_adapter(settings: Settings | None = None) -> LLMAdapter:
     """Return the configured LLM adapter.
 
     Selection by VT_LLM_PROVIDER:
-      - 'gemini'  -> live Google Gemini (requires VT_LLM_API_KEY).
+      - 'gemini'  -> live Google Gemini (requires VT_LLM_API_KEY). The
+        VT_LLM_FRAMEWORK setting then picks the binding: 'langchain' uses
+        the LangChain adapter (LangGraph/LangSmith path), 'native' (default)
+        uses the google-genai SDK adapter. Both satisfy the same port.
       - 'mock'    -> deterministic offline adapter (tests / no key).
     If 'gemini' is requested without a key, we fall back to mock and log a
     warning rather than crash the service.
@@ -150,12 +153,78 @@ def get_llm_adapter(settings: Settings | None = None) -> LLMAdapter:
         An LLMAdapter implementation.
     """
     settings = settings or get_settings()
-    provider = settings.llm_provider.lower()
+    provider = settings.resolved_provider()
+
+    if provider == "local_omni":
+        from app.adapters.openai_compat_adapter import OpenAICompatAdapter
+
+        # Build the OpenRouter fallback (used when Local Omni is slow/fails),
+        # if an OpenRouter key is available; otherwise Local Omni runs alone.
+        fallback = None
+        if settings.openrouter_key():
+            fallback = OpenAICompatAdapter(
+                api_key=settings.openrouter_key() or "",
+                model=settings.openrouter_model,
+                base_url=settings.openrouter_base_url,
+                temperature=settings.llm_temperature,
+                provider="openrouter(fallback)",
+            )
+        logger.info("using Local Omni adapter models=%s (fallback=%s, budget=%ss)",
+                    settings.local_omni_models(),
+                    "openrouter" if fallback else "none",
+                    settings.local_omni_latency_budget_s)
+        return OpenAICompatAdapter(
+            api_key=settings.local_omni_key() or "",
+            model=settings.local_omni_models(),
+            base_url=settings.local_omni_base_url,
+            temperature=settings.llm_temperature,
+            provider="local_omni",
+            latency_budget_s=settings.local_omni_latency_budget_s,
+            fallback=fallback,
+        )
+
+    if provider == "openrouter":
+        from app.adapters.openai_compat_adapter import OpenAICompatAdapter
+
+        logger.info("using OpenRouter adapter model=%s", settings.openrouter_model)
+        return OpenAICompatAdapter(
+            api_key=settings.openrouter_key() or "",
+            model=settings.openrouter_model,
+            base_url=settings.openrouter_base_url,
+            temperature=settings.llm_temperature,
+            provider="openrouter",
+        )
+
+    if provider == "omni":
+        from app.adapters.openai_compat_adapter import OpenAICompatAdapter
+
+        logger.info("using omni (cheaperinference) adapter models=%s", settings.omni_models())
+        return OpenAICompatAdapter(
+            api_key=settings.omni_key() or "",
+            model=settings.omni_models(),
+            base_url=settings.omni_base_url,
+            temperature=settings.llm_temperature,
+            provider="omni",
+        )
 
     if provider == "gemini":
         if not settings.llm_api_key:
             logger.warning("provider=gemini but VT_LLM_API_KEY is empty; using mock")
             return MockLLMAdapter(model=settings.llm_model)
+
+        # Framework selector: 'langchain' routes through LangGraph's LLM
+        # binding (langchain-google-genai); 'native' (default) uses the
+        # original google-genai SDK adapter. Same LLMAdapter port either way.
+        if settings.llm_framework.lower() == "langchain":
+            from app.adapters.langchain_gemini_adapter import LangChainGeminiAdapter
+
+            logger.info("using LangChain Gemini adapter model=%s", settings.llm_model)
+            return LangChainGeminiAdapter(
+                api_key=settings.llm_api_key,
+                model=settings.llm_model,
+                temperature=settings.llm_temperature,
+            )
+
         from app.adapters.gemini_adapter import GeminiLLMAdapter
 
         logger.info("using Gemini adapter model=%s", settings.llm_model)

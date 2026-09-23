@@ -19,8 +19,16 @@ from app.core.config import get_settings
 
 @pytest.fixture(autouse=True, scope="session")
 def _force_mock_llm() -> None:
-    """Pin VT_LLM_PROVIDER=mock for all tests (autouse, session scope)."""
+    """Pin deterministic mock LLM + synthetic data for all tests.
+
+    Tests must never hit the network or a paid/keyed API, so this forces the
+    mock LLM provider AND synthetic market/news modes, and clears every live
+    provider key that the availability resolver would otherwise pick up.
+    """
     os.environ["VT_LLM_PROVIDER"] = "mock"
-    os.environ.pop("VT_LLM_API_KEY", None)
-    os.environ.pop("GEMINI_API_KEY", None)
+    os.environ["VT_MARKET_DATA_MODE"] = "synthetic"
+    os.environ["VT_NEWS_MODE"] = "synthetic"
+    for key in ("VT_LLM_API_KEY", "GEMINI_API_KEY", "OPEN_ROUTER_KEY",
+                "OMNI_ROUTE_KEY", "LOCAL_OMNI_KEY"):
+        os.environ.pop(key, None)
     get_settings.cache_clear()
