@@ -64,7 +64,7 @@ test-results/
 *.sqlite
 *.sqlite3
 *.db
-data/
+# data/
 pgdata/
 mongodata/
 redisdata/
