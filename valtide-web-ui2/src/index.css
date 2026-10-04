@@ -31,11 +31,11 @@
   --c-ede9fe: #f5f3ff; /* on-accent text (stays light, sits on purple) */
 
   /* Green (success) */
-  --c-34d399: #047857; /* AA green text on light */
-  --c-065f46: #10b981; /* green container accent on light */
+  --c-34d399: #047857; /* AA green text/ink on light (5.48:1 on white) */
+  --c-065f46: #d1fae5; /* pale green container fill: solid badge #047857-on-#d1fae5 = 4.84:1 AA */
 
   /* Red (error) */
-  --c-ef4444: #dc2626; /* AA red on light */
+  --c-ef4444: #b91c1c; /* AA red ink on light: solid badge on #fee2e2 = 5.3:1, 6.47:1 on white */
   --c-fca5a5: #b91c1c;
   --c-450a0a: #fecaca; /* red container bg on light */
   --c-3b1111: #fee2e2; /* red container bg on light */
