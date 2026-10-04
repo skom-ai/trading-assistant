@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Sun, Moon } from 'lucide-react';
 import { NavTab } from '../types/terminal';
+import { useTheme } from '../hooks/useTheme';
 
 interface HeaderProps {
   activeTab: NavTab;
@@ -20,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [estTime, setEstTime] = useState('');
   const [ping, setPing] = useState(12);
   const [profileOpen, setProfileOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const updateClocks = () => {
@@ -165,6 +168,15 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="px-2.5 py-1 rounded bg-[var(--c-27272a)]/60 border border-[var(--c-52525b)]/40 text-[var(--c-a1a1aa)] text-xs font-semibold tracking-wider font-mono hidden md:block">
             INSTITUTIONAL DESK
           </div>
+
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center justify-center px-2.5 py-1 rounded bg-[var(--c-121215)] border border-[var(--c-27272a)] text-[var(--c-a1a1aa)] hover:border-[var(--c-52525b)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--c-a78bfa)]"
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
 
           {/* Profile Menu */}
           <div className="relative">
