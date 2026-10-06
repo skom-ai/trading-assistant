@@ -14,6 +14,7 @@ import { AgentModule } from '../agent/agent.module';
 import { NewsController } from './news.controller';
 import { ScannerController } from './scanner.controller';
 import { StrategyController } from './strategy.controller';
+import { GovernanceController } from './governance.controller';
 
 /** Liveness controller for the BFF. */
 @ApiTags('Ops')
@@ -37,6 +38,7 @@ export class HealthController {
     NewsController,
     ScannerController,
     StrategyController,
+    GovernanceController,
   ],
 })
 export class FeaturesModule {}

@@ -1,6 +1,6 @@
 {
-  "name": "Valtide",
-  "description": "Institutional-grade financial intelligence terminal featuring deterministic stock scanning, news catalyst opportunity verification, strategy studio planning, and SEC-17a-4 cryptographic audit trails.",
+  "name": "Valtide Terminal",
+  "description": "Institutional AI quantitative & governance suite: deterministic multi-factor scanning, news catalyst verification, and SEC 17a-4 cryptographic audit trail.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

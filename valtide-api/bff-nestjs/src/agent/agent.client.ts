@@ -51,6 +51,30 @@ export class AgentClient {
   }
 
   /**
+   * GET a JSON resource from an internal agent endpoint.
+   * @param path Endpoint path (e.g. '/internal/v1/governance').
+   * @param params Optional query parameters.
+   * @param correlationId The request's correlation id to propagate.
+   * @returns The parsed JSON response body.
+   * @throws HttpException carrying the agent's taxonomy code on failure.
+   */
+  async get<T>(
+    path: string,
+    params: Record<string, unknown>,
+    correlationId: string,
+  ): Promise<T> {
+    try {
+      const res = await this.http.get<T>(path, {
+        params,
+        headers: { 'X-Correlation-Id': correlationId },
+      });
+      return res.data;
+    } catch (err) {
+      throw this.translate(err as AxiosError, correlationId);
+    }
+  }
+
+  /**
    * Translate an axios error into a taxonomy-carrying HttpException.
    * @param err The axios error.
    * @param correlationId The correlation id for logging.

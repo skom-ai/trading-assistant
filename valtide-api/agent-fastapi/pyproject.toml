@@ -10,7 +10,20 @@ version = "1.0.0"
 description = "Valtide AI agent + deterministic engine service (FR1-FR5)"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi==0.115.6",
+    # W4.2 security hardening: fastapi 0.115.6 -> 0.133.0 is the minimal bump
+    # whose starlette floor (>=0.40.0, no upper bound) permits starlette 1.3.1,
+    # which clears all request-reachable starlette CVEs (Host-header auth
+    # bypass CVE-2026-48710, Range/urlencoded DoS, path/form DoS). fastapi
+    # itself has no OpenTelemetry dependency, so the pinned OTel 1.29.0/0.50b0
+    # stack is unaffected and the fastapi instrumentor still loads clean.
+    "fastapi==0.133.0",
+    # Pinned transitively via fastapi; held explicitly at the first fully
+    # patched release so the fix cannot regress on a future resolver run.
+    "starlette==1.3.1",
+    # W4.2: 2.7.0 -> 2.8.0 closes proxy-TLS context confusion (CVE-2026-97687)
+    # and streaming-chunk DoS (CVE-2026-97688/97689). Pinned explicitly though
+    # transitive, per enterprise dependency hygiene.
+    "urllib3==2.8.0",
     "uvicorn[standard]==0.34.0",
     # pydantic + google-genai bumped forward in Phase 1 to satisfy the
     # LangChain-Google stack (langchain-google-genai 4.x requires

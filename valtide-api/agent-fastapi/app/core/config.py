@@ -163,7 +163,7 @@ class Settings(BaseSettings):
             One of 'local_omni', 'openrouter', 'omni', 'gemini', or 'mock'.
         """
         explicit = self.llm_provider.lower()
-        if explicit in {"local_omni", "openrouter", "omni", "mock"}:
+        if explicit in {"local_omni", "openrouter", "omni", "gemini", "mock"}:
             return explicit
         if self.local_omni_key():
             return "local_omni"

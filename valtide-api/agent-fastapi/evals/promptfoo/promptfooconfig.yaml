@@ -1,0 +1,121 @@
+# =====================================================================
+# File: evals/promptfoo/promptfooconfig.yaml
+# Author: Sunil+Ai Assistant
+# Date: 2026-09-24
+# Description:
+#   Promptfoo functional/contract regression matrix for the Valtide
+#   trading-assistant agent service (evals-testing-strategy.md §7.2).
+#   Promptfoo treats the running service as a BLACK BOX and asserts the
+#   HTTP response contract of the FR1/FR3 endpoints — verdict/label is a
+#   valid enum, abstention carries no numeric levels, the correct
+#   server-authoritative disclaimer is present, and no forbidden
+#   (directive/guarantee) language leaks. It does NOT import our Python.
+#
+#   Target: the agent FastAPI service, default http://localhost:8000
+#   (override with VT_AGENT_URL). Endpoints are under /internal/v1.
+#
+# Run:
+#   docker-compose up -d --build          # from trading-assistant/
+#   promptfoo eval -c promptfooconfig.yaml
+# =====================================================================
+description: "Valtide trading-assistant — FR1/FR3 functional contract matrix"
+
+# Each 'provider' is one endpoint the golden cases are POSTed to. Promptfoo
+# substitutes {{...}} vars from `tests` into the request body.
+providers:
+  - id: "https://{{env.VT_AGENT_HOST}}/internal/v1/news-check"
+    label: fr1-news-check
+    config:
+      method: POST
+      headers:
+        Content-Type: application/json
+        X-Internal-Token: "{{env.VT_INTERNAL_TOKEN}}"
+      body:
+        symbol: "{{symbol}}"
+        simulate_empty: "{{simulate_empty}}"
+      transformResponse: "json"
+
+  - id: "https://{{env.VT_AGENT_HOST}}/internal/v1/strategy"
+    label: fr3-strategy
+    config:
+      method: POST
+      headers:
+        Content-Type: application/json
+        X-Internal-Token: "{{env.VT_INTERNAL_TOKEN}}"
+      body:
+        symbol: "{{symbol}}"
+        news_label: "{{news_label}}"
+        user_framing: "{{user_framing}}"
+      transformResponse: "json"
+
+# Assertions applied to EVERY test unless overridden. These are the black-box
+# equivalents of the DeepEval hard gates.
+defaultTest:
+  assert:
+    # No forbidden directive/guarantee/profit-probability language anywhere in
+    # the JSON response (mirrors ForbiddenLanguageLinter._FORBIDDEN).
+    - type: not-icontains-any
+      value:
+        - "you should buy"
+        - "you should sell"
+        - "guaranteed"
+        - "risk-free"
+        - "can't lose"
+        - "sure thing"
+        - "will definitely"
+        - "probability of profit"
+        - "certain to rise"
+    # Every surface must ship the "not investment advice" disclaimer.
+    - type: icontains
+      value: "Not investment advice"
+
+tests:
+  # ---- FR1 news-check contract ------------------------------------------
+  - description: "FR1 returns a valid verdict label + news disclaimer"
+    vars: { symbol: "AAPL", simulate_empty: false, news_label: "", user_framing: "" }
+    providers: [fr1-news-check]
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          ["REAL_CATALYST","ALREADY_PRICED_IN","HYPE","INSUFFICIENT_EVIDENCE"]
+            .includes(output.label)
+      - type: javascript
+        # Committed labels must carry >=1 citation; abstention may carry none.
+        value: |
+          output.label === "INSUFFICIENT_EVIDENCE" || (output.citations || []).length > 0
+
+  - description: "FR1 simulate_empty must abstain with no citations"
+    vars: { symbol: "AAPL", simulate_empty: true, news_label: "", user_framing: "" }
+    providers: [fr1-news-check]
+    assert:
+      - type: javascript
+        value: 'output.label === "INSUFFICIENT_EVIDENCE" && (output.citations || []).length === 0'
+
+  # ---- FR3 strategy contract --------------------------------------------
+  - description: "FR3 HYPE -> AVOID with no actionable levels"
+    vars: { symbol: "AAPL", news_label: "HYPE", user_framing: "", simulate_empty: false }
+    providers: [fr3-strategy]
+    assert:
+      - type: javascript
+        value: 'output.strategy.verdict === "AVOID"'
+      - type: javascript
+        value: |
+          output.strategy.entry === null &&
+          output.strategy.target === null &&
+          output.strategy.stop === null
+
+  - description: "FR3 verdict is a valid enum and BUY levels are ordered"
+    vars: { symbol: "AAPL", news_label: "REAL_CATALYST", user_framing: "", simulate_empty: false }
+    providers: [fr3-strategy]
+    assert:
+      - type: javascript
+        value: |
+          ["BUY","WAIT","AVOID","INSUFFICIENT_EVIDENCE"].includes(output.strategy.verdict)
+      - type: javascript
+        # If BUY, enforce stop < entry < target (mirrors validate_coherence).
+        value: |
+          const s = output.strategy;
+          s.verdict !== "BUY" || (s.stop < s.entry && s.entry < s.target)
+      - type: icontains
+        value: "FINRA 2214"   # strategy-surface disclaimer marker

@@ -36,6 +36,35 @@ describe('AgentClient error translation', () => {
     expect((ex.getResponse() as { code: string }).code).toBe('SOURCE_UNAVAILABLE');
     expect(ex.getStatus()).toBe(503);
   });
+
+  it('get() returns res.data and propagates the correlation id', async () => {
+    const client = new AgentClient();
+    const get = jest.fn().mockResolvedValue({ data: { records: [] } });
+    (client as unknown as { http: { get: unknown } }).http = { get } as never;
+    const out = await client.get('/internal/v1/governance', { symbol: null }, 'cid-g');
+    expect(out).toEqual({ records: [] });
+    expect(get).toHaveBeenCalledWith('/internal/v1/governance', {
+      params: { symbol: null },
+      headers: { 'X-Correlation-Id': 'cid-g' },
+    });
+  });
+
+  it('get() translates an axios error into an HttpException', async () => {
+    const client = new AgentClient();
+    const get = jest
+      .fn()
+      .mockRejectedValue({ response: { status: 404, data: { code: 'NO_DATA_FOUND' } } });
+    (client as unknown as { http: { get: unknown } }).http = { get } as never;
+    await expect(client.get('/x', {}, 'cid')).rejects.toBeInstanceOf(HttpException);
+  });
+
+  it('post() returns res.data on success', async () => {
+    const client = new AgentClient();
+    const post = jest.fn().mockResolvedValue({ data: { ok: true } });
+    (client as unknown as { http: { post: unknown } }).http = { post } as never;
+    const out = await client.post('/internal/v1/scan', { universe: null }, 'cid-p');
+    expect(out).toEqual({ ok: true });
+  });
 });
 
 describe('TaxonomyExceptionFilter', () => {

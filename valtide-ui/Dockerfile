@@ -1,8 +1,9 @@
 # =====================================================================
 # File: Dockerfile
-# Description: Container image for the Valtide Next-gen React (Vite) UI.
-#              Builds the static bundle and serves it with `vite preview`
-#              bound to all interfaces inside the compose network.
+# Description: Container image for the Valtide second React (Vite) UI used
+#              for A/B testing trading strategies. Builds the static bundle
+#              and serves it with `vite preview` bound to all interfaces
+#              inside the compose network.
 # Notes: The UI talks ONLY to the NestJS BFF (P1). Set VITE_BFF_BASE_URL
 #        to the BFF origin when wiring live API calls.
 # =====================================================================
@@ -11,7 +12,9 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install
+# --legacy-peer-deps: package.json pins esbuild@^0.25 while vite@^8 wants
+# esbuild@^0.27||^0.28; the committed lockfile was resolved this way too.
+RUN npm install --legacy-peer-deps
 COPY . .
 RUN npm run build
 

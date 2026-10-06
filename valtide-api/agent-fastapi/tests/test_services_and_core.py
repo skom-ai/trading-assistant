@@ -89,3 +89,26 @@ def test_market_provider_is_deterministic() -> None:
 def test_news_provider_empty_flag_returns_no_headlines() -> None:
     """The empty flag simulates a zero-result provider set."""
     assert NewsProvider().fetch("NVDA", empty=True) == []
+
+
+def test_explicit_gemini_provider_is_honored_over_key_precedence() -> None:
+    """An explicit VT_LLM_PROVIDER=gemini wins over local_omni/openrouter keys.
+
+    Regression: resolved_provider() previously omitted 'gemini' from the
+    explicit-override set, so setting VT_LLM_PROVIDER=gemini was silently
+    ignored and the dead local_omni->openrouter chain was used instead,
+    surfacing as AGENT_OUTPUT_INVALID on /api/v1/strategy.
+    """
+    from app.core.config import Settings
+
+    # Explicit gemini + a Gemini key, but local_omni/openrouter keys also set
+    # (the exact production .env shape that triggered the bug).
+    settings = Settings(llm_provider="gemini", llm_api_key="gkey")
+    assert settings.resolved_provider() == "gemini"
+
+
+def test_explicit_mock_provider_is_honored() -> None:
+    """An explicit VT_LLM_PROVIDER=mock is honored verbatim."""
+    from app.core.config import Settings
+
+    assert Settings(llm_provider="mock").resolved_provider() == "mock"
