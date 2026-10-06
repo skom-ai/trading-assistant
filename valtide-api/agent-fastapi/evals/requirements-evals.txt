@@ -1,0 +1,9 @@
+# Eval-only dependencies for the Valtide trading-assistant behavioral suite.
+# File: evals/requirements-evals.txt
+# Author: Sunil+Ai Assistant
+# Date: 2026-09-24
+# Install into the agent-fastapi venv only when running evals:
+#     pip install -r evals/requirements-evals.txt
+# DeepEval is optional: without it, evals/test_evals.py still runs the
+# deterministic hard-gate checks as plain pytest asserts.
+deepeval==2.* ; python_version >= "3.11"
